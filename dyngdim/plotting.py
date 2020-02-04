@@ -4,7 +4,18 @@ import matplotlib.gridspec as gridspec
 import numpy as np
 
 
-def plot_single_source(results, ds=[1, 2, 3], folder="./"):
+def plot_all_sources(relative_dimensions):
+    """plot relative dimensionf computed from all sources"""
+    relative_dimensions = relative_dimensions + np.diag(
+        len(relative_dimensions) * [np.nan]
+    )
+
+    plt.figure()
+    plt.imshow(relative_dimensions, cmap=plt.get_cmap("coolwarm"))
+    plt.colorbar(label="Rwlative dimension")
+
+
+def plot_single_source(results, ds=[1, 2, 3], folder="./"):  # pylint: disable=dangerous-default-value
     """plot the relative dimensions"""
 
     plt.figure()

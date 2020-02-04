@@ -1,13 +1,56 @@
 """main functions"""
+import multiprocessing
+import time
+
+import networkx as nx
 import numpy as np
 import scipy as sc
 from tqdm import tqdm
-import networkx as nx
+
+from .utils import delta_measure
+
+
+class Worker:
+    """worker for computing relative dimensions"""
+
+    def __init__(self, graph, laplacian, times, spectral_gap):
+        self.laplacian = laplacian
+        self.times = times
+        self.spectral_gap = spectral_gap
+        self.graph = graph
+
+    def __call__(self, node):
+        print("node %s..." % node)
+        time_0 = time.time()
+        initial_measure = delta_measure(self.graph, node)
+        node_trajectories = compute_node_trajectories(
+            self.laplacian, initial_measure, self.times, disable_tqdm=True
+        )
+        print(
+            "node %s... done in %.2f seconds"
+            % (node, np.round(time.time() - time_0, 2))
+        )
+        return extract_relative_dimensions(
+            self.times, node_trajectories, self.spectral_gap
+        )[0]
+
+
+def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
+    """main function to compute all relative dimensions of a graph"""
+    laplacian, spectral_gap = construct_laplacian(
+        graph, use_spectral_gap=use_spectral_gap
+    )
+
+    worker = Worker(graph, laplacian, times, spectral_gap)
+    pool = multiprocessing.Pool(n_workers)
+    return pool.map(worker, graph.nodes)
 
 
 def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
     """main function to compute relative dimensions"""
-    laplacian, spectral_gap = construct_laplacian(graph, use_spectral_gap=use_spectral_gap)
+    laplacian, spectral_gap = construct_laplacian(
+        graph, use_spectral_gap=use_spectral_gap
+    )
 
     node_trajectories = compute_node_trajectories(laplacian, initial_measure, times)
     (
@@ -32,8 +75,9 @@ def construct_laplacian(graph, laplacian_tpe="normalized", use_spectral_gap=True
     """construct the Laplacian matrix"""
 
     if laplacian_tpe == "normalized":
-        degrees = np.array([graph.degree[i] for i in graph.nodes])
+        degrees = np.array([graph.degree(i, weight="weight") for i in graph.nodes])
         laplacian = sc.sparse.diags(1.0 / degrees).dot(nx.laplacian_matrix(graph))
+        # laplacian = nx.laplacian_matrix(graph).dot(sc.sparse.diags(1.0 / degrees))
     else:
         raise Exception(
             "Any other laplacian type than normalized are not implemented as they will not work"
@@ -48,18 +92,17 @@ def construct_laplacian(graph, laplacian_tpe="normalized", use_spectral_gap=True
     return laplacian, spectral_gap
 
 
-# compute all neighbourhood densities
 def heat_kernel(laplacian, timestep, measure):
     """compute matrix exponential on a measure"""
     return sc.sparse.linalg.expm_multiply(-timestep * laplacian, measure)
 
 
-def compute_node_trajectories(laplacian, initial_measure, times):
+def compute_node_trajectories(laplacian, initial_measure, times, disable_tqdm=False):
     """compute node trajectories from diffusion dynamics"""
     node_trajectories = [
         heat_kernel(laplacian, times[0], initial_measure),
     ]
-    for i in tqdm(range(len(times) - 1)):
+    for i in tqdm(range(len(times) - 1), disable=disable_tqdm):
         node_trajectories.append(
             heat_kernel(times[i + 1] - times[i], laplacian, node_trajectories[-1])
         )
@@ -87,5 +130,6 @@ def extract_relative_dimensions(times, node_trajectories, spectral_gap):
 
     # set un-defined dimensions to 0
     relative_dimensions[np.isnan(relative_dimensions)] = 0
+    relative_dimensions[relative_dimensions < 0] = 0
 
     return relative_dimensions, peak_amplitudes, peak_times, diffusion_coefficient
