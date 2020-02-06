@@ -7,7 +7,7 @@ import numpy as np
 import scipy as sc
 from tqdm import tqdm
 
-from .utils import delta_measure
+from .utils import delta_measure, averaging
 
 
 class Worker:
@@ -32,7 +32,7 @@ class Worker:
         )
         return extract_relative_dimensions(
             self.times, node_trajectories, self.spectral_gap
-        )[0]
+        )
 
 
 def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
@@ -43,7 +43,16 @@ def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
 
     worker = Worker(graph, laplacian, times, spectral_gap)
     pool = multiprocessing.Pool(n_workers)
-    return pool.map(worker, graph.nodes)
+
+    out = pool.map(worker, graph.nodes)
+
+    relative_dimensions = np.array([rel_dim[0] for rel_dim in out])
+    peak_times = np.array([peak_time[2] for peak_time in out])
+
+    np.fill_diagonal(relative_dimensions, 0)
+    np.fill_diagonal(peak_times, 0)
+
+    return relative_dimensions, peak_times  # pool.map(worker, graph.nodes)
 
 
 def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
@@ -69,6 +78,39 @@ def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
     }
 
     return results
+
+
+def run_local_dimension(graph, times, use_spectral_gap=True, n_workers=1):
+    """  computing the local dimensionality of each node """
+
+    relative_dimensions, peak_times = run_all_sources(
+        graph, times, use_spectral_gap, n_workers
+    )
+    dimension_t = []
+    for time_horizon in times:
+        dimension_t.append(
+            averaging(
+                relative_dimensions,
+                weights=((peak_times < time_horizon) & (peak_times > 0)),
+                axis=1,
+            )
+        )
+    local_dimension = np.vstack(dimension_t)
+    return local_dimension
+
+
+def run_global_dimension(graph, times, use_spectral_gap=True, n_workers=1):
+    """ Computing the global dimensionality of the graph """
+
+    relative_dimensions, peak_times = run_all_sources(
+        graph, times, use_spectral_gap, n_workers
+    )
+    global_dimension = averaging(
+        relative_dimensions,
+        weights=((peak_times < times[-1:]) & (peak_times > 0)),
+        axis=1,
+    ).mean()
+    return global_dimension
 
 
 def construct_laplacian(graph, laplacian_tpe="normalized", use_spectral_gap=True):
