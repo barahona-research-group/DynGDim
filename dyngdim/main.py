@@ -49,8 +49,8 @@ def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
     relative_dimensions = out[:, 0]
     peak_times = out[:, 1]
 
-    np.fill_diagonal(relative_dimensions, 0)
-    np.fill_diagonal(peak_times, 0)
+    np.fill_diagonal(relative_dimensions, np.nan)
+    np.fill_diagonal(peak_times, np.nan)
 
     return relative_dimensions, peak_times
 
@@ -90,8 +90,8 @@ def run_local_dimension(graph, times, use_spectral_gap=True, n_workers=1):
     local_dimensions = []
     for time_horizon in times:
         relative_dimensions_reduced = relative_dimensions.copy()
-        relative_dimensions_reduced[peak_times > time_horizon] = 0
-        local_dimensions.append(relative_dimensions_reduced.mean(1))
+        relative_dimensions_reduced[peak_times > time_horizon] = np.nan
+        local_dimensions.append(np.nanmean(relative_dimensions_reduced, axis=1))
 
     return np.array(local_dimensions)
 
