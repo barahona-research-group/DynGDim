@@ -32,7 +32,7 @@ class Worker:
         )
         return extract_relative_dimensions(
             self.times, node_trajectories, self.spectral_gap
-        )[0]
+        )[:2]
 
 
 def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
@@ -43,7 +43,16 @@ def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
 
     worker = Worker(graph, laplacian, times, spectral_gap)
     pool = multiprocessing.Pool(n_workers)
-    return pool.map(worker, graph.nodes)
+
+    out = np.array(pool.map(worker, graph.nodes))
+
+    relative_dimensions = out[:, 0]
+    peak_times = out[:, 1]
+
+    np.fill_diagonal(relative_dimensions, 0)
+    np.fill_diagonal(peak_times, 0)
+
+    return relative_dimensions, peak_times
 
 
 def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
@@ -55,8 +64,8 @@ def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
     node_trajectories = compute_node_trajectories(laplacian, initial_measure, times)
     (
         relative_dimensions,
-        peak_amplitudes,
         peak_times,
+        peak_amplitudes,
         diffusion_coefficient,
     ) = extract_relative_dimensions(times, node_trajectories, spectral_gap)
 
@@ -69,6 +78,27 @@ def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
     }
 
     return results
+
+
+def run_local_dimension(graph, times, use_spectral_gap=True, n_workers=1):
+    """  computing the local dimensionality of each node """
+
+    relative_dimensions, peak_times = run_all_sources(
+        graph, times, use_spectral_gap, n_workers
+    )
+
+    local_dimensions = []
+    for time_horizon in times:
+        relative_dimensions_reduced = relative_dimensions.copy()
+        relative_dimensions_reduced[peak_times > time_horizon] = 0
+        local_dimensions.append(relative_dimensions_reduced.mean(1))
+
+    return np.array(local_dimensions)
+
+
+def compute_global_dimension(local_dimensions):
+    """ Computing the global dimensiona of the graph """
+    return local_dimensions.mean(1)
 
 
 def construct_laplacian(graph, laplacian_tpe="normalized", use_spectral_gap=True):
@@ -132,4 +162,4 @@ def extract_relative_dimensions(times, node_trajectories, spectral_gap):
     relative_dimensions[np.isnan(relative_dimensions)] = 0
     relative_dimensions[relative_dimensions < 0] = 0
 
-    return relative_dimensions, peak_amplitudes, peak_times, diffusion_coefficient
+    return relative_dimensions, peak_times, peak_amplitudes, diffusion_coefficient

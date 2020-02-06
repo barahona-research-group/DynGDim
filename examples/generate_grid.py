@@ -4,7 +4,7 @@ import networkx as nx
 
 def generate_grid():
     """generate the grid"""
-    n_node = 101
+    n_node = 50
     dim = 1
     periodic = False
 
