@@ -96,6 +96,7 @@ def run_local_dimension(graph, times, use_spectral_gap=True, n_workers=1):
             )
         )
     local_dimension = np.vstack(dimension_t)
+        
     return local_dimension
 
 
