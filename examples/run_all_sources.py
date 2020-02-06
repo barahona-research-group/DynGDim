@@ -8,9 +8,9 @@ from generate_grid import generate_grid
 
 graph = generate_grid()
 
-t_min = -8
-t_max = 0.2
-n_t = 100
+t_min = -2
+t_max = 1.0
+n_t = 10
 n_workers = 4
 
 times = np.logspace(t_min, t_max, n_t)

@@ -7,7 +7,7 @@ import numpy as np
 import scipy as sc
 from tqdm import tqdm
 
-from .utils import delta_measure, averaging
+from .utils import delta_measure
 
 
 class Worker:
@@ -32,7 +32,7 @@ class Worker:
         )
         return extract_relative_dimensions(
             self.times, node_trajectories, self.spectral_gap
-        )
+        )[:2]
 
 
 def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
@@ -44,15 +44,15 @@ def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
     worker = Worker(graph, laplacian, times, spectral_gap)
     pool = multiprocessing.Pool(n_workers)
 
-    out = pool.map(worker, graph.nodes)
+    out = np.array(pool.map(worker, graph.nodes))
 
-    relative_dimensions = np.array([rel_dim[0] for rel_dim in out])
-    peak_times = np.array([peak_time[2] for peak_time in out])
+    relative_dimensions = out[:, 0]
+    peak_times = out[:, 1]
 
     np.fill_diagonal(relative_dimensions, 0)
     np.fill_diagonal(peak_times, 0)
 
-    return relative_dimensions, peak_times  # pool.map(worker, graph.nodes)
+    return relative_dimensions, peak_times
 
 
 def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
@@ -64,8 +64,8 @@ def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
     node_trajectories = compute_node_trajectories(laplacian, initial_measure, times)
     (
         relative_dimensions,
-        peak_amplitudes,
         peak_times,
+        peak_amplitudes,
         diffusion_coefficient,
     ) = extract_relative_dimensions(times, node_trajectories, spectral_gap)
 
@@ -86,32 +86,19 @@ def run_local_dimension(graph, times, use_spectral_gap=True, n_workers=1):
     relative_dimensions, peak_times = run_all_sources(
         graph, times, use_spectral_gap, n_workers
     )
-    dimension_t = []
+
+    local_dimensions = []
     for time_horizon in times:
-        dimension_t.append(
-            averaging(
-                relative_dimensions,
-                weights=((peak_times < time_horizon) & (peak_times > 0)),
-                axis=1,
-            )
-        )
-    local_dimension = np.vstack(dimension_t)
-        
-    return local_dimension
+        relative_dimensions_reduced = relative_dimensions.copy()
+        relative_dimensions_reduced[peak_times > time_horizon] = 0
+        local_dimensions.append(relative_dimensions_reduced.mean(1))
+
+    return np.array(local_dimensions)
 
 
-def run_global_dimension(graph, times, use_spectral_gap=True, n_workers=1):
-    """ Computing the global dimensionality of the graph """
-
-    relative_dimensions, peak_times = run_all_sources(
-        graph, times, use_spectral_gap, n_workers
-    )
-    global_dimension = averaging(
-        relative_dimensions,
-        weights=((peak_times < times[-1:]) & (peak_times > 0)),
-        axis=1,
-    ).mean()
-    return global_dimension
+def compute_global_dimension(local_dimensions):
+    """ Computing the global dimensiona of the graph """
+    return local_dimensions.mean(1)
 
 
 def construct_laplacian(graph, laplacian_tpe="normalized", use_spectral_gap=True):
@@ -175,4 +162,4 @@ def extract_relative_dimensions(times, node_trajectories, spectral_gap):
     relative_dimensions[np.isnan(relative_dimensions)] = 0
     relative_dimensions[relative_dimensions < 0] = 0
 
-    return relative_dimensions, peak_amplitudes, peak_times, diffusion_coefficient
+    return relative_dimensions, peak_times, peak_amplitudes, diffusion_coefficient

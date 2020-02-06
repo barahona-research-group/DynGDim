@@ -1,6 +1,5 @@
 """additional functions"""
 import numpy as np
-import warnings
 
 def delta_measure(graph, node):
     """create a delta measure with the correct mass"""
@@ -10,12 +9,3 @@ def delta_measure(graph, node):
         len(graph) * graph.degree(node, weight="weight")
     )
     return measure
-
-def averaging(a, axis=None, weights=None):
-        a = np.asanyarray(a)
-        wgt = np.asanyarray(weights)
-        result_dtype = np.result_type(a.dtype, wgt.dtype)
-        scl = wgt.sum(axis=axis, dtype=result_dtype)       
-        warnings.filterwarnings("ignore")
-        avg = np.multiply(a, wgt, dtype=result_dtype).sum(axis)/scl
-        return avg

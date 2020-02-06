@@ -1,8 +1,10 @@
 """plotting functions"""
+import os
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 import networkx as nx
+
 
 def plot_all_sources(relative_dimensions):
     """plot relative dimensionf computed from all sources"""
@@ -15,7 +17,9 @@ def plot_all_sources(relative_dimensions):
     plt.colorbar(label="Rwlative dimension")
 
 
-def plot_single_source(results, ds=[1, 2, 3], folder="./"):  # pylint: disable=dangerous-default-value
+def plot_single_source(
+    results, ds=[1, 2, 3], folder="./"
+):  # pylint: disable=dangerous-default-value
     """plot the relative dimensions"""
 
     plt.figure()
@@ -96,39 +100,53 @@ def plot_single_source(results, ds=[1, 2, 3], folder="./"):  # pylint: disable=d
     plt.savefig(folder + "/relative_dimension.svg")
 
 
+def plot_local_dimensions(
+    graph, local_dimension, times, pos=None, folder="./local_dimension_figs"
+):
+    """plot local dimensions"""
 
-def plot_local_dimensionality(graph, local_dimension, times, pos=None, folder="./local_dimension_figs"):
-    
+    if not os.path.isdir(folder):
+        os.mkdir(folder)
+
     if pos is None:
         pos = nx.spring_layout(graph)
-    
+
     plt.figure()
 
     vmin = np.nanmin(local_dimension)
     vmax = np.nanmax(local_dimension)
 
-    
-    for i,time_horizon in enumerate(times):
+    for time_index, time_horizon in enumerate(times):
         plt.figure()
 
-        node_size = local_dimension[i,:]/np.max(local_dimension[i,:])*20
-            
+        node_size = (
+            local_dimension[time_index, :] / np.max(local_dimension[time_index, :]) * 20
+        )
+
         cmap = plt.cm.coolwarm
-        
+
         node_order = np.argsort(node_size)
-        
+
         for n in node_order:
-            nodes = nx.draw_networkx_nodes(graph, pos = pos, nodelist = [n,], node_size = node_size[n], cmap=cmap, node_color=[local_dimension[i, n]/np.max(local_dimension[i,:]),], vmin=vmin, vmax=vmax)
-    
-        plt.colorbar(nodes, label='Local Dimension')        
-        
-        weights = np.array([graph[i][j]['weight'] for i,j in graph.edges])
-        nx.draw_networkx_edges(graph, pos = pos, alpha=0.5 ,width = 2*weights)
-    
-        plt.suptitle('Time Horizon {:.2e}'.format(time_horizon),fontsize=14)
-    
-        plt.savefig(folder + "/local_dimension_{:.2e}.svg".format(i))
+            nodes = nx.draw_networkx_nodes(
+                graph,
+                pos=pos,
+                nodelist=[n,],
+                node_size=node_size[n],
+                cmap=cmap,
+                node_color=[
+                    local_dimension[time_index, n]
+                    / np.max(local_dimension[time_index, :]),
+                ],
+                vmin=vmin,
+                vmax=vmax,
+            )
 
+        plt.colorbar(nodes, label="Local Dimension")
 
+        weights = np.array([graph[i][j]["weight"] for i, j in graph.edges])
+        nx.draw_networkx_edges(graph, pos=pos, alpha=0.5, width=2 * weights)
 
-
+        plt.suptitle("Time Horizon {:.2e}".format(time_horizon), fontsize=14)
+        plt.savefig(folder + "/local_dimension_{}.svg".format(time_index))
+        plt.close()
