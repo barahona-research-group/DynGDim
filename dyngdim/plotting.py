@@ -84,8 +84,8 @@ def plot_single_source(
 
     ax2.set_xlim(results["times"][0] * 0.9, results["times"][-1] * 1.1)
     ax2.set_ylim(
-        np.min(results["peak_amplitudes"]) * 0.9,
-        np.max(results["peak_amplitudes"]) * 1.1,
+        np.nanmin(results["peak_amplitudes"]) * 0.9,
+        np.nanmax(results["peak_amplitudes"]) * 1.1,
     )
     ax1.set_xticks([])
 
@@ -101,7 +101,7 @@ def plot_single_source(
 
 
 def plot_local_dimensions(
-    graph, local_dimension, times, pos=None, folder="./local_dimension_figs"
+    graph, local_dimension, times, pos=None, folder="./outputs/local_dimension_figs"
 ):
     """plot local dimensions"""
 
@@ -136,7 +136,7 @@ def plot_local_dimensions(
                 cmap=cmap,
                 node_color=[
                     local_dimension[time_index, n]
-                    / np.max(local_dimension[time_index, :]),
+                    ,
                 ],
                 vmin=vmin,
                 vmax=vmax,
@@ -145,7 +145,7 @@ def plot_local_dimensions(
         plt.colorbar(nodes, label="Local Dimension")
 
         weights = np.array([graph[i][j]["weight"] for i, j in graph.edges])
-        nx.draw_networkx_edges(graph, pos=pos, alpha=0.5, width=2 * weights)
+        nx.draw_networkx_edges(graph, pos=pos, alpha=0.5, width=weights/np.max(weights))
 
         plt.suptitle("Time Horizon {:.2e}".format(time_horizon), fontsize=14)
         plt.savefig(folder + "/local_dimension_{}.svg".format(time_index))

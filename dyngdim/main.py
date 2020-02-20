@@ -20,15 +20,16 @@ class Worker:
         self.graph = graph
 
     def __call__(self, node):
-        print("node %s..." % node)
+        print("node ...".format(node))
         time_0 = time.time()
         initial_measure = delta_measure(self.graph, node)
         node_trajectories = compute_node_trajectories(
             self.laplacian, initial_measure, self.times, disable_tqdm=True
         )
         print(
-            "node %s... done in %.2f seconds"
-            % (node, np.round(time.time() - time_0, 2))
+            "node {0}... done in {1} seconds".format(
+                node, np.round(time.time() - time_0, 2)
+            )
         )
         return extract_relative_dimensions(
             self.times, node_trajectories, self.spectral_gap
@@ -75,6 +76,7 @@ def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
         "peak_times": peak_times,
         "diffusion_coefficient": diffusion_coefficient,
         "times": times,
+	"node_trajectories": node_trajectories
     }
 
     return results
@@ -98,7 +100,7 @@ def run_local_dimension(graph, times, use_spectral_gap=True, n_workers=1):
 
 def compute_global_dimension(local_dimensions):
     """ Computing the global dimensiona of the graph """
-    return local_dimensions[-1:,:].mean(1)
+    return local_dimensions[-1:, :].mean(1)
 
 
 def construct_laplacian(graph, laplacian_tpe="normalized", use_spectral_gap=True):
@@ -147,9 +149,17 @@ def extract_relative_dimensions(times, node_trajectories, spectral_gap):
     # set the diffusion coefficient
     diffusion_coefficient = 0.5 / spectral_gap
 
+    #
+    stationary_prob = 1 / node_trajectories.shape[1]
+    precision = 0.005
+
     # find the peaks
     peak_amplitudes = np.max(node_trajectories, axis=0)
     peak_times = times[np.argmax(node_trajectories, axis=0)]
+
+    # remove unreachable nodes
+    peak_times[peak_amplitudes < stationary_prob + precision] = np.nan
+    peak_amplitudes[peak_amplitudes < stationary_prob + precision] = np.nan
 
     # compute the effective dimension
     relative_dimensions = (
@@ -159,7 +169,9 @@ def extract_relative_dimensions(times, node_trajectories, spectral_gap):
     )
 
     # set un-defined dimensions to 0
-    relative_dimensions[np.isnan(relative_dimensions)] = 0
-    relative_dimensions[relative_dimensions < 0] = 0
+    relative_dimensions[np.isnan(relative_dimensions)] = np.nan
+
+    with np.errstate(invalid='ignore'):
+    	relative_dimensions[relative_dimensions < 0] = np.nan
 
     return relative_dimensions, peak_times, peak_amplitudes, diffusion_coefficient
