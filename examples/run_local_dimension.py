@@ -3,7 +3,6 @@ import numpy as np
 
 from dyngdim import run_local_dimension
 from dyngdim.io import save_local_dimensions
-
 from generate_grid import generate_grid
 
 graph = generate_grid()
@@ -17,5 +16,3 @@ times = np.logspace(t_min, t_max, n_t)
 
 local_dimensions = run_local_dimension(graph, times, n_workers=n_workers)
 save_local_dimensions(times, local_dimensions)
-
-

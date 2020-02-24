@@ -1,14 +1,18 @@
 """main functions"""
 import multiprocessing
+import os
 import time
+import logging
 
 import networkx as nx
 import numpy as np
 import scipy as sc
 from tqdm import tqdm
 
-from .utils import delta_measure
+PRECISION = 1e-8
 
+L = logging.getLogger('DynGDim')
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
 class Worker:
     """worker for computing relative dimensions"""
@@ -20,16 +24,15 @@ class Worker:
         self.graph = graph
 
     def __call__(self, node):
-        print("node ...".format(node))
+        L.info("node ... %d", node)
         time_0 = time.time()
         initial_measure = delta_measure(self.graph, node)
         node_trajectories = compute_node_trajectories(
             self.laplacian, initial_measure, self.times, disable_tqdm=True
         )
-        print(
-            "node {0}... done in {1} seconds".format(
+        L.info(
+            "node %d... done in %.2f seconds",
                 node, np.round(time.time() - time_0, 2)
-            )
         )
         return extract_relative_dimensions(
             self.times, node_trajectories, self.spectral_gap
@@ -76,7 +79,7 @@ def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
         "peak_times": peak_times,
         "diffusion_coefficient": diffusion_coefficient,
         "times": times,
-	"node_trajectories": node_trajectories
+        "node_trajectories": node_trajectories,
     }
 
     return results
@@ -151,15 +154,14 @@ def extract_relative_dimensions(times, node_trajectories, spectral_gap):
 
     #
     stationary_prob = 1 / node_trajectories.shape[1]
-    precision = 0.005
 
     # find the peaks
     peak_amplitudes = np.max(node_trajectories, axis=0)
     peak_times = times[np.argmax(node_trajectories, axis=0)]
 
     # remove unreachable nodes
-    peak_times[peak_amplitudes < stationary_prob + precision] = np.nan
-    peak_amplitudes[peak_amplitudes < stationary_prob + precision] = np.nan
+    peak_times[peak_amplitudes < stationary_prob + PRECISION] = np.nan
+    peak_amplitudes[peak_amplitudes < stationary_prob + PRECISION] = np.nan
 
     # compute the effective dimension
     relative_dimensions = (
@@ -171,7 +173,15 @@ def extract_relative_dimensions(times, node_trajectories, spectral_gap):
     # set un-defined dimensions to 0
     relative_dimensions[np.isnan(relative_dimensions)] = np.nan
 
-    with np.errstate(invalid='ignore'):
-    	relative_dimensions[relative_dimensions < 0] = np.nan
+    with np.errstate(invalid="ignore"):
+        relative_dimensions[relative_dimensions < 0] = np.nan
 
     return relative_dimensions, peak_times, peak_amplitudes, diffusion_coefficient
+
+
+def delta_measure(graph, node):
+    """create a delta measure with the correct mass"""
+    total_degree = sum([graph.degree(u, weight="weight") for u in graph])
+    measure = np.zeros(len(graph))
+    measure[node] = total_degree / (len(graph) * graph.degree(node, weight="weight"))
+    return measure

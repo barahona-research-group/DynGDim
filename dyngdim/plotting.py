@@ -134,10 +134,7 @@ def plot_local_dimensions(
                 nodelist=[n,],
                 node_size=node_size[n],
                 cmap=cmap,
-                node_color=[
-                    local_dimension[time_index, n]
-                    ,
-                ],
+                node_color=[local_dimension[time_index, n],],
                 vmin=vmin,
                 vmax=vmax,
             )
@@ -145,7 +142,9 @@ def plot_local_dimensions(
         plt.colorbar(nodes, label="Local Dimension")
 
         weights = np.array([graph[i][j]["weight"] for i, j in graph.edges])
-        nx.draw_networkx_edges(graph, pos=pos, alpha=0.5, width=weights/np.max(weights))
+        nx.draw_networkx_edges(
+            graph, pos=pos, alpha=0.5, width=weights / np.max(weights)
+        )
 
         plt.suptitle("Time Horizon {:.2e}".format(time_horizon), fontsize=14)
         plt.savefig(folder + "/local_dimension_{}.svg".format(time_index))

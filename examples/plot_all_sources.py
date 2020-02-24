@@ -1,13 +1,11 @@
 """plot relative dimensions from all sources"""
-import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 
-from dyngdim.plotting import plot_all_sources
 from dyngdim.io import load_all_sources_relative_dimensions
-
+from dyngdim.plotting import plot_all_sources
 from generate_grid import generate_grid
-
 
 relative_dimensions = np.array(load_all_sources_relative_dimensions())
 plot_all_sources(relative_dimensions)

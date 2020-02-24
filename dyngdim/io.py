@@ -2,9 +2,7 @@
 import pickle
 
 
-def save_local_dimensions(
-    times, local_dimensions, filename="local_dimensions"
-):
+def save_local_dimensions(times, local_dimensions, filename="local_dimensions"):
     """save local dimensions in a pickle"""
     pickle.dump([times, local_dimensions], open(filename + ".pkl", "wb"))
 
