@@ -2,7 +2,7 @@
 import multiprocessing
 import os
 import time
-import logging
+from tqdm import tqdm
 
 import networkx as nx
 import numpy as np
@@ -11,8 +11,6 @@ from tqdm import tqdm
 
 PRECISION = 1e-8
 
-L = logging.getLogger('DynGDim')
-logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
 class Worker:
     """worker for computing relative dimensions"""
@@ -24,15 +22,10 @@ class Worker:
         self.graph = graph
 
     def __call__(self, node):
-        L.info("node ... %d", node)
         time_0 = time.time()
         initial_measure = delta_measure(self.graph, node)
         node_trajectories = compute_node_trajectories(
             self.laplacian, initial_measure, self.times, disable_tqdm=True
-        )
-        L.info(
-            "node %d... done in %.2f seconds",
-                node, np.round(time.time() - time_0, 2)
         )
         return extract_relative_dimensions(
             self.times, node_trajectories, self.spectral_gap
@@ -46,9 +39,13 @@ def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
     )
 
     worker = Worker(graph, laplacian, times, spectral_gap)
-    pool = multiprocessing.Pool(n_workers)
+    if n_workers == 1:
+        mapper = map
+    else:
+        pool = multiprocessing.Pool(n_workers)
+        mapper = pool.imap
 
-    out = np.array(pool.map(worker, graph.nodes))
+    out = np.array(list(tqdm(mapper(worker, graph.nodes), total=len(graph.nodes))))
 
     relative_dimensions = out[:, 0]
     peak_times = out[:, 1]
