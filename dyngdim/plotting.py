@@ -18,7 +18,7 @@ def plot_all_sources(relative_dimensions):
 
 
 def plot_single_source(
-    results, ds=[1, 2, 3], folder="./"
+    results, ds=[1, 2, 3], folder="./", target_nodes=[],
 ):  # pylint: disable=dangerous-default-value
     """plot the relative dimensions"""
 
@@ -79,6 +79,13 @@ def plot_single_source(
         cmap=cmap,
     )
 
+    if target_nodes is not None:
+        plt.scatter(
+            results["peak_times"][target_nodes],
+            results["peak_amplitudes"][target_nodes],
+            s=50,
+            color="r",
+        )
     plt.xscale("log")
     plt.yscale("log")
 
