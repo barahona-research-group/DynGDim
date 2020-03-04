@@ -31,7 +31,7 @@ def plot_single_source(
     ax1 = plt.subplot(gs[0, 0])
     plt.hist(
         np.log10(results["peak_times"]),
-        bins=max(10, int(0.1 * len(results["times"]))),
+        bins=max(10, int(0.02 * len(results["peak_times"]))),
         density=False,
         log=True,
         range=(
