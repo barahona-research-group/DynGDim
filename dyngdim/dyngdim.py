@@ -1,13 +1,10 @@
 """main functions"""
 import multiprocessing
-import os
-import time
 from tqdm import tqdm
 
 import networkx as nx
 import numpy as np
 import scipy as sc
-from tqdm import tqdm
 
 PRECISION = 1e-8
 
@@ -21,9 +18,7 @@ class Worker:
         self.spectral_gap = spectral_gap
         self.graph = graph
 
-    def __call__(self, node):
-        time_0 = time.time()
-        initial_measure = delta_measure(self.graph, node)
+    def __call__(self, initial_measure):
         node_trajectories = compute_node_trajectories(
             self.laplacian, initial_measure, self.times, disable_tqdm=True
         )
@@ -33,7 +28,15 @@ class Worker:
 
 
 def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
-    """main function to compute all relative dimensions of a graph"""
+    """compute relative dimensions of all the nodes in a graph"""
+    sources = [delta_measure(graph, node) for node in graph]
+    return run_several_sources(
+        graph, times, sources, use_spectral_gap=use_spectral_gap, n_workers=n_workers
+    )
+
+
+def run_several_sources(graph, times, sources, use_spectral_gap=True, n_workers=1):
+    """relative dimensions from a list of sources"""
     laplacian, spectral_gap = construct_laplacian(
         graph, use_spectral_gap=use_spectral_gap
     )
@@ -45,7 +48,7 @@ def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
         pool = multiprocessing.Pool(n_workers)
         mapper = pool.imap
 
-    out = np.array(list(tqdm(mapper(worker, graph.nodes), total=len(graph.nodes))))
+    out = np.array(list(tqdm(mapper(worker, sources), total=len(graph.nodes))))
 
     relative_dimensions = out[:, 0]
     peak_times = out[:, 1]
