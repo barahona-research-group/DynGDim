@@ -29,7 +29,7 @@ class Worker:
 
 def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
     """compute relative dimensions of all the nodes in a graph"""
-    sources = [delta_measure(graph, node) for node in graph]
+    sources = [initial_measure(graph, [node]) for node in graph]
     return run_several_sources(
         graph, times, sources, use_spectral_gap=use_spectral_gap, n_workers=n_workers
     )
@@ -48,7 +48,7 @@ def run_several_sources(graph, times, sources, use_spectral_gap=True, n_workers=
         pool = multiprocessing.Pool(n_workers)
         mapper = pool.imap
 
-    out = np.array(list(tqdm(mapper(worker, sources), total=len(graph.nodes))))
+    out = np.array(list(tqdm(mapper(worker, sources), total=len(sources))))
 
     relative_dimensions = out[:, 0]
     peak_times = out[:, 1]
@@ -86,10 +86,19 @@ def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
 
 
 def run_local_dimension(graph, times, use_spectral_gap=True, n_workers=1):
-    """  computing the local dimensionality of each node """
+    """computing the local dimensionality of each node"""
+    sources = [initial_measure(graph, [node]) for node in graph]
+    return run_local_dimension_from_sources(
+        graph, times, sources, use_spectral_gap=use_spectral_gap, n_workers=n_workers
+    )
 
-    relative_dimensions, peak_times = run_all_sources(
-        graph, times, use_spectral_gap, n_workers
+
+def run_local_dimension_from_sources(
+    graph, times, sources, use_spectral_gap=True, n_workers=1
+):
+    """computing the local dimensionality of each source"""
+    relative_dimensions, peak_times = run_several_sources(
+        graph, times, sources, use_spectral_gap, n_workers
     )
 
     local_dimensions = []
@@ -102,13 +111,12 @@ def run_local_dimension(graph, times, use_spectral_gap=True, n_workers=1):
 
 
 def compute_global_dimension(local_dimensions):
-    """ Computing the global dimensiona of the graph """
+    """Computing the global dimensiona of the graph"""
     return local_dimensions[-1:, :].mean(1)
 
 
 def construct_laplacian(graph, laplacian_tpe="normalized", use_spectral_gap=True):
     """construct the Laplacian matrix"""
-
     if laplacian_tpe == "normalized":
         degrees = np.array([graph.degree(i, weight="weight") for i in graph.nodes])
         laplacian = sc.sparse.diags(1.0 / degrees).dot(nx.laplacian_matrix(graph))
@@ -179,9 +187,12 @@ def extract_relative_dimensions(times, node_trajectories, spectral_gap):
     return relative_dimensions, peak_times, peak_amplitudes, diffusion_coefficient
 
 
-def delta_measure(graph, node):
-    """create a delta measure with the correct mass"""
+def initial_measure(graph, nodes):
+    """create an measure with the correct mass from a list of nodes"""
     total_degree = sum([graph.degree(u, weight="weight") for u in graph])
     measure = np.zeros(len(graph))
-    measure[node] = total_degree / (len(graph) * graph.degree(node, weight="weight"))
+    measure[nodes] = [
+        total_degree / (len(graph) * graph.degree(node, weight="weight")) / len(nodes)
+        for node in nodes
+    ]
     return measure
