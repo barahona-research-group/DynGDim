@@ -2,6 +2,7 @@
 import os
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import matplotlib.colors as pltc
 import numpy as np
 import networkx as nx
 
@@ -18,8 +19,8 @@ def plot_all_sources(relative_dimensions):
 
 
 def plot_single_source(
-    results, ds=[1, 2, 3], folder="./", target_nodes=[],
-):  # pylint: disable=dangerous-default-value
+    results, ds=[1, 2, 3], folder="./", target_nodes=None,
+):
     """plot the relative dimensions"""
 
     plt.figure()
@@ -47,31 +48,22 @@ def plot_single_source(
 
     ax2 = plt.subplot(gs[1, 0])
 
-    def f(d):
-        f = (
-            results["times"] ** (-d / 2.0)
-            * np.exp(-d / 2.0)
-            / (4.0 * results["diffusion_coefficient"] * np.pi) ** (0.5 * d)
-        )
-        return f
-
-    for d in ds:
-        ax2.plot(results["times"], f(d), "--", lw=2, label=r"$d_{rel} =$" + str(d))
-
     cmap = plt.get_cmap("coolwarm")
 
     nan_id = np.argwhere(results["relative_dimensions"] == 0)
     relative_dimension_nan = results["relative_dimensions"].copy()
-    relative_dimension_nan[nan_id] = np.nan
 
-    plt.scatter(
+    dim_min = np.nanpercentile(relative_dimension_nan, 2)
+    dim_max = np.nanpercentile(relative_dimension_nan, 98)
+    relative_dimension_nan = np.clip(relative_dimension_nan, dim_min, dim_max)
+    ax2.scatter(
         results["peak_times"][nan_id],
         results["peak_amplitudes"][nan_id],
         c="k",
         s=50,
         cmap=cmap,
     )
-    plt.scatter(
+    sc = ax2.scatter(
         results["peak_times"],
         results["peak_amplitudes"],
         c=relative_dimension_nan,
@@ -89,6 +81,20 @@ def plot_single_source(
     plt.xscale("log")
     plt.yscale("log")
 
+    def f(d):
+        f = (
+            results["times"] ** (-d / 2.0)
+            * np.exp(-d / 2.0)
+            / (4.0 * results["diffusion_coefficient"] * np.pi) ** (0.5 * d)
+        )
+        return f
+
+    for d in ds:
+        ax2.plot(results["times"], f(d), "--", lw=2, label=r"$d_{rel} =$" + str(d))
+    norm = pltc.Normalize(vmin=0.,vmax=1)
+    ax2.plot(results["times"], f(dim_min), "-", lw=1, label=r"$d_{rel} =$" + str(np.round(dim_min, 2)), c=cmap(norm(0)))
+    ax2.plot(results["times"], f(dim_max), "-", lw=1, label=r"$d_{rel} =$" + str(np.round(dim_max, 2)), c=cmap(norm(1)))
+
     ax2.set_xlim(results["times"][0] * 0.9, results["times"][-1] * 1.1)
     ax2.set_ylim(
         np.nanmin(results["peak_amplitudes"]) * 0.9,
@@ -97,7 +103,7 @@ def plot_single_source(
     ax1.set_xticks([])
 
     ax_cb = plt.subplot(gs[1, 1])
-    cbar = plt.colorbar(ax=ax2, cax=ax_cb)
+    cbar = plt.colorbar(sc, cax=ax_cb)
     cbar.set_label(r"${\rm Relative\,\, dimension}\,\, d_{rel}$")
 
     ax2.set_xlabel(r"$\rm Peak\,\,  time\, \,  (units\, \,  of\, \,  \lambda_2)$")
