@@ -73,6 +73,8 @@ def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
         diffusion_coefficient,
     ) = extract_relative_dimensions(times, node_trajectories, spectral_gap)
 
+    relative_dimensions[initial_measure > 0.0] = np.nan
+
     results = {
         "relative_dimensions": relative_dimensions,
         "peak_amplitudes": peak_amplitudes,

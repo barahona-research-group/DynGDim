@@ -50,23 +50,19 @@ def plot_single_source(
 
     cmap = plt.get_cmap("coolwarm")
 
-    nan_id = np.argwhere(results["relative_dimensions"] == 0)
-    relative_dimension_nan = results["relative_dimensions"].copy()
+    nan_id = np.isnan(results["relative_dimensions"])
+    relative_dimension = results["relative_dimensions"].copy()
 
-    dim_min = np.nanpercentile(relative_dimension_nan, 2)
-    dim_max = np.nanpercentile(relative_dimension_nan, 98)
-    relative_dimension_nan = np.clip(relative_dimension_nan, dim_min, dim_max)
+    dim_min = np.nanpercentile(relative_dimension, 2)
+    dim_max = np.nanpercentile(relative_dimension, 98)
+    relative_dimension_nan = np.clip(relative_dimension, dim_min, dim_max)
     ax2.scatter(
-        results["peak_times"][nan_id],
-        results["peak_amplitudes"][nan_id],
-        c="k",
-        s=50,
-        cmap=cmap,
+        results["peak_times"][nan_id], results["peak_amplitudes"][nan_id], c="k", s=50,
     )
     sc = ax2.scatter(
         results["peak_times"],
         results["peak_amplitudes"],
-        c=relative_dimension_nan,
+        c=relative_dimension,
         s=50,
         cmap=cmap,
     )
@@ -91,9 +87,23 @@ def plot_single_source(
 
     for d in ds:
         ax2.plot(results["times"], f(d), "--", lw=2, label=r"$d_{rel} =$" + str(d))
-    norm = pltc.Normalize(vmin=0.,vmax=1)
-    ax2.plot(results["times"], f(dim_min), "-", lw=1, label=r"$d_{rel} =$" + str(np.round(dim_min, 2)), c=cmap(norm(0)))
-    ax2.plot(results["times"], f(dim_max), "-", lw=1, label=r"$d_{rel} =$" + str(np.round(dim_max, 2)), c=cmap(norm(1)))
+    norm = pltc.Normalize(vmin=0.0, vmax=1)
+    ax2.plot(
+        results["times"],
+        f(dim_min),
+        "-",
+        lw=1,
+        label=r"$d_{rel} =$" + str(np.round(dim_min, 2)),
+        c=cmap(norm(0)),
+    )
+    ax2.plot(
+        results["times"],
+        f(dim_max),
+        "-",
+        lw=1,
+        label=r"$d_{rel} =$" + str(np.round(dim_max, 2)),
+        c=cmap(norm(1)),
+    )
 
     ax2.set_xlim(results["times"][0] * 0.9, results["times"][-1] * 1.1)
     ax2.set_ylim(
