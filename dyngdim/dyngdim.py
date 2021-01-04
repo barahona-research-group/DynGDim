@@ -114,7 +114,7 @@ def run_local_dimension_from_sources(
 
 def compute_global_dimension(local_dimensions):
     """Computing the global dimensiona of the graph"""
-    return local_dimensions[-1:, :].mean(1)
+    return local_dimensions.mean(1)
 
 
 def construct_laplacian(graph, laplacian_tpe="normalized", use_spectral_gap=True):

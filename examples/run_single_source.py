@@ -8,11 +8,12 @@ from generate_grid import generate_grid
 graph = generate_grid()
 
 
-t_min = -2
+t_min = -4
 t_max = 1.0
-n_t = 500
+n_t = 2000
 
 id_0 = int(len(graph) / 2)
+id_0 = 10
 
 times = np.logspace(t_min, t_max, n_t)
 

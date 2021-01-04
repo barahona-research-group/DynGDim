@@ -19,20 +19,27 @@ def plot_all_sources(relative_dimensions):
 
 
 def plot_single_source(
-    results, ds=[1, 2, 3], folder="./", target_nodes=None,
+    results,
+    ds=[1, 2, 3],
+    folder="./",
+    target_nodes=None,
+    with_trajectories=False,
+    figsize=(5, 4),
 ):
     """plot the relative dimensions"""
 
-    plt.figure()
+    plt.figure(figsize=figsize)
     gs = gridspec.GridSpec(2, 2, height_ratios=[0.2, 1], width_ratios=[1, 0.05])
 
     gs.update(wspace=0.05)
     gs.update(hspace=0.00)
 
     ax1 = plt.subplot(gs[0, 0])
+    results["peak_times"][np.isnan(results["peak_times"])] = results["times"][-1]
+    print(results["peak_times"])
     plt.hist(
         np.log10(results["peak_times"]),
-        bins=max(10, int(0.02 * len(results["peak_times"]))),
+        bins=max(50, int(0.02 * len(results["peak_times"]))),
         density=False,
         log=True,
         range=(
@@ -47,6 +54,9 @@ def plot_single_source(
     ax1.set_xticks([])
 
     ax2 = plt.subplot(gs[1, 0])
+    if with_trajectories:
+        for traj in results["node_trajectories"].T:
+            ax2.plot(results["times"], traj, lw=0.5, c="0.8", zorder=-1)
 
     cmap = plt.get_cmap("coolwarm")
 
@@ -120,7 +130,7 @@ def plot_single_source(
     ax2.set_ylabel(r"$\rm Peak\,\, amplitude$")
     ax2.legend()
 
-    plt.savefig(folder + "/relative_dimension.svg")
+    plt.savefig(folder + "/relative_dimension.svg", bbox_inches="tight")
 
 
 def plot_local_dimensions(
