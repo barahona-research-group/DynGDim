@@ -8,9 +8,9 @@ from generate_grid import generate_grid
 graph = generate_grid()
 
 
-t_min = -4
-t_max = 1.0
-n_t = 2000
+t_min = -5
+t_max = 0.0
+n_t = 200
 
 id_0 = int(len(graph) / 2)
 id_0 = 10

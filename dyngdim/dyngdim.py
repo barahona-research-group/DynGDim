@@ -1,6 +1,7 @@
 """main functions"""
 import multiprocessing
 from tqdm import tqdm
+import warnings
 
 import networkx as nx
 import numpy as np
@@ -23,7 +24,7 @@ class Worker:
             self.laplacian, initial_measure, self.times, disable_tqdm=True
         )
         return extract_relative_dimensions(
-            self.times, node_trajectories, self.spectral_gap
+            self.times, node_trajectories, initial_measure, self.spectral_gap
         )[:2]
 
 
@@ -37,18 +38,10 @@ def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
 
 def run_several_sources(graph, times, sources, use_spectral_gap=True, n_workers=1):
     """relative dimensions from a list of sources"""
-    laplacian, spectral_gap = construct_laplacian(
-        graph, use_spectral_gap=use_spectral_gap
-    )
-
+    laplacian, spectral_gap = construct_laplacian(graph, use_spectral_gap=use_spectral_gap)
     worker = Worker(graph, laplacian, times, spectral_gap)
-    if n_workers == 1:
-        mapper = map
-    else:
-        pool = multiprocessing.Pool(n_workers)
-        mapper = pool.imap
-
-    out = np.array(list(tqdm(mapper(worker, sources), total=len(sources))))
+    with multiprocessing.Pool(n_workers) as pool:
+        out = np.array(list(tqdm(pool.imap(worker, sources), total=len(sources))))
 
     relative_dimensions = out[:, 0]
     peak_times = out[:, 1]
@@ -61,9 +54,7 @@ def run_several_sources(graph, times, sources, use_spectral_gap=True, n_workers=
 
 def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
     """main function to compute relative dimensions"""
-    laplacian, spectral_gap = construct_laplacian(
-        graph, use_spectral_gap=use_spectral_gap
-    )
+    laplacian, spectral_gap = construct_laplacian(graph, use_spectral_gap=use_spectral_gap)
 
     node_trajectories = compute_node_trajectories(laplacian, initial_measure, times)
     (
@@ -71,9 +62,7 @@ def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
         peak_times,
         peak_amplitudes,
         diffusion_coefficient,
-    ) = extract_relative_dimensions(times, node_trajectories, spectral_gap)
-
-    relative_dimensions[initial_measure > 0.0] = np.nan
+    ) = extract_relative_dimensions(times, node_trajectories, initial_measure, spectral_gap)
 
     results = {
         "relative_dimensions": relative_dimensions,
@@ -95,9 +84,7 @@ def run_local_dimension(graph, times, use_spectral_gap=True, n_workers=1):
     )
 
 
-def run_local_dimension_from_sources(
-    graph, times, sources, use_spectral_gap=True, n_workers=1
-):
+def run_local_dimension_from_sources(graph, times, sources, use_spectral_gap=True, n_workers=1):
     """computing the local dimensionality of each source"""
     relative_dimensions, peak_times = run_several_sources(
         graph, times, sources, use_spectral_gap, n_workers
@@ -154,24 +141,37 @@ def compute_node_trajectories(laplacian, initial_measure, times, disable_tqdm=Fa
     return np.array(node_trajectories)
 
 
-def extract_relative_dimensions(times, node_trajectories, spectral_gap):
-    """compute the relative dimensions, given a trajectory p_t
-    dim_th is a threshold to select unreachable nodes,
-    dim smaller than min(eff_dim)+dim_th are dim=0"""
-
+def extract_relative_dimensions(times, node_trajectories, initial_measure, spectral_gap):
+    """compute the relative dimensions from node trajectories."""
     # set the diffusion coefficient
     diffusion_coefficient = 0.5 / spectral_gap
 
-    #
+    # uniform stationary state as we do consensus
     stationary_prob = 1 / node_trajectories.shape[1]
 
     # find the peaks
     peak_amplitudes = np.max(node_trajectories, axis=0)
-    peak_times = times[np.argmax(node_trajectories, axis=0)]
+    peak_pos = np.argmax(node_trajectories, axis=0)
+    missed_peaks = np.where(peak_pos[initial_measure == 0] == 0)[0]
+    if len(missed_peaks) > 0:
+        warnings.warn(
+            """Please reduce the minimum time because some peaks are not detected
+                      We will consider them as unreachable."""
+        )
+
+    peak_times = times[peak_pos]
 
     # remove unreachable nodes
     peak_times[peak_amplitudes < stationary_prob + PRECISION] = np.nan
     peak_amplitudes[peak_amplitudes < stationary_prob + PRECISION] = np.nan
+
+    # remove missed peaks
+    peak_times[missed_peaks] = np.nan
+    peak_amplitudes[missed_peaks] = np.nan
+
+    # remove initial measure
+    peak_times[initial_measure > 0] = np.nan
+    peak_amplitudes[initial_measure > 0] = np.nan
 
     # compute the effective dimension
     relative_dimensions = (
@@ -180,7 +180,7 @@ def extract_relative_dimensions(times, node_trajectories, spectral_gap):
         / (1.0 + np.log(peak_times) + np.log(4.0 * diffusion_coefficient * np.pi))
     )
 
-    # set un-defined dimensions to 0
+    # set un-defined dimensions to nan
     relative_dimensions[np.isnan(relative_dimensions)] = np.nan
 
     with np.errstate(invalid="ignore"):

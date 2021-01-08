@@ -9,9 +9,7 @@ import networkx as nx
 
 def plot_all_sources(relative_dimensions):
     """plot relative dimensionf computed from all sources"""
-    relative_dimensions = relative_dimensions + np.diag(
-        len(relative_dimensions) * [np.nan]
-    )
+    relative_dimensions = relative_dimensions + np.diag(len(relative_dimensions) * [np.nan])
 
     plt.figure()
     plt.imshow(relative_dimensions, cmap=plt.get_cmap("coolwarm"))
@@ -19,12 +17,7 @@ def plot_all_sources(relative_dimensions):
 
 
 def plot_single_source(
-    results,
-    ds=[1, 2, 3],
-    folder="./",
-    target_nodes=None,
-    with_trajectories=False,
-    figsize=(5, 4),
+    results, ds=[1, 2, 3], folder="./", target_nodes=None, with_trajectories=False, figsize=(5, 4),
 ):
     """plot the relative dimensions"""
 
@@ -36,21 +29,15 @@ def plot_single_source(
 
     ax1 = plt.subplot(gs[0, 0])
     results["peak_times"][np.isnan(results["peak_times"])] = results["times"][-1]
-    print(results["peak_times"])
     plt.hist(
         np.log10(results["peak_times"]),
         bins=max(50, int(0.02 * len(results["peak_times"]))),
         density=False,
         log=True,
-        range=(
-            np.log10(results["times"][0] * 0.9),
-            np.log10(results["times"][-1] * 1.1),
-        ),
+        range=(np.log10(results["times"][0] * 0.9), np.log10(results["times"][-1] * 1.1),),
         color="0.5",
     )
-    ax1.set_xlim(
-        np.log10(results["times"][0] * 0.9), np.log10(results["times"][-1] * 1.1)
-    )
+    ax1.set_xlim(np.log10(results["times"][0] * 0.9), np.log10(results["times"][-1] * 1.1))
     ax1.set_xticks([])
 
     ax2 = plt.subplot(gs[1, 0])
@@ -70,11 +57,7 @@ def plot_single_source(
         results["peak_times"][nan_id], results["peak_amplitudes"][nan_id], c="k", s=50,
     )
     sc = ax2.scatter(
-        results["peak_times"],
-        results["peak_amplitudes"],
-        c=relative_dimension,
-        s=50,
-        cmap=cmap,
+        results["peak_times"], results["peak_amplitudes"], c=relative_dimension, s=50, cmap=cmap,
     )
 
     if target_nodes is not None:
@@ -117,8 +100,7 @@ def plot_single_source(
 
     ax2.set_xlim(results["times"][0] * 0.9, results["times"][-1] * 1.1)
     ax2.set_ylim(
-        np.nanmin(results["peak_amplitudes"]) * 0.9,
-        np.nanmax(results["peak_amplitudes"]) * 1.1,
+        np.nanmin(results["peak_amplitudes"]) * 0.9, np.nanmax(results["peak_amplitudes"]) * 1.1,
     )
     ax1.set_xticks([])
 
@@ -134,7 +116,7 @@ def plot_single_source(
 
 
 def plot_local_dimensions(
-    graph, local_dimension, times, pos=None, folder="./outputs/local_dimension_figs"
+    graph, local_dimension, times, pos=None, folder="./outputs/local_dimension_figs", figsize=(5, 4)
 ):
     """plot local dimensions"""
 
@@ -150,11 +132,9 @@ def plot_local_dimensions(
     vmax = np.nanmax(local_dimension)
 
     for time_index, time_horizon in enumerate(times):
-        plt.figure()
+        plt.figure(figsize=figsize)
 
-        node_size = (
-            local_dimension[time_index, :] / np.max(local_dimension[time_index, :]) * 20
-        )
+        node_size = local_dimension[time_index, :] / np.max(local_dimension[time_index, :]) * 20
 
         cmap = plt.cm.coolwarm
 
@@ -175,9 +155,7 @@ def plot_local_dimensions(
         plt.colorbar(nodes, label="Local Dimension")
 
         weights = np.array([graph[i][j]["weight"] for i, j in graph.edges])
-        nx.draw_networkx_edges(
-            graph, pos=pos, alpha=0.5, width=weights / np.max(weights)
-        )
+        nx.draw_networkx_edges(graph, pos=pos, alpha=0.5, width=weights / np.max(weights))
 
         plt.suptitle("Time Horizon {:.2e}".format(time_horizon), fontsize=14)
         plt.savefig(folder + "/local_dimension_{}.svg".format(time_index))
