@@ -157,13 +157,13 @@ def analyse_graph(G, times=None, betas=None, n_runs=100, n_workers=4, folder="ou
     return times, betas, beta_crit_eig, beta_crit_deg, corr_scan, chis
 
 
-def plot_analysis(folder):
+def plot_analysis(folder, vmin=0.7):
     """Plot SIR analysis."""
     times, betas, beta_crit_eig, beta_crit_deg, corr_scan, chis = pickle.load(
         open(f"{folder}/corr_scan.pkl", "rb")
     )
     plt.figure()
-    plt.pcolormesh(times, betas, corr_scan, cmap="YlOrBr", shading="nearest", vmin=0.7)
+    plt.pcolormesh(times, betas, corr_scan, cmap="YlOrBr", shading="nearest", vmin=vmin)
 
     plt.axhline(beta_crit_eig, c="r")
     plt.axhline(beta_crit_deg, c="b")
