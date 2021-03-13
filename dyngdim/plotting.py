@@ -1,10 +1,11 @@
 """plotting functions"""
 import os
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
+
 import matplotlib.colors as pltc
-import numpy as np
+import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 
 
 def plot_all_sources(relative_dimensions):
@@ -17,10 +18,16 @@ def plot_all_sources(relative_dimensions):
 
 
 def plot_single_source(
-    results, ds=[1, 2, 3], folder="./", target_nodes=None, with_trajectories=False, figsize=(5, 4),
+    results,
+    ds=None,
+    folder="./",
+    target_nodes=None,
+    with_trajectories=False,
+    figsize=(5, 4),
 ):
     """plot the relative dimensions"""
-
+    if ds is None:
+        ds = [1, 2, 3]
     plt.figure(figsize=figsize)
     gs = gridspec.GridSpec(2, 2, height_ratios=[0.2, 1], width_ratios=[1, 0.05])
 
@@ -34,7 +41,10 @@ def plot_single_source(
         bins=max(50, int(0.02 * len(results["peak_times"]))),
         density=False,
         log=True,
-        range=(np.log10(results["times"][0] * 0.9), np.log10(results["times"][-1] * 1.1),),
+        range=(
+            np.log10(results["times"][0] * 0.9),
+            np.log10(results["times"][-1] * 1.1),
+        ),
         color="0.5",
     )
     ax1.set_xlim(np.log10(results["times"][0] * 0.9), np.log10(results["times"][-1] * 1.1))
@@ -52,12 +62,18 @@ def plot_single_source(
 
     dim_min = np.nanpercentile(relative_dimension, 2)
     dim_max = np.nanpercentile(relative_dimension, 98)
-    relative_dimension_nan = np.clip(relative_dimension, dim_min, dim_max)
     ax2.scatter(
-        results["peak_times"][nan_id], results["peak_amplitudes"][nan_id], c="k", s=50,
+        results["peak_times"][nan_id],
+        results["peak_amplitudes"][nan_id],
+        c="k",
+        s=50,
     )
     sc = ax2.scatter(
-        results["peak_times"], results["peak_amplitudes"], c=relative_dimension, s=50, cmap=cmap,
+        results["peak_times"],
+        results["peak_amplitudes"],
+        c=relative_dimension,
+        s=50,
+        cmap=cmap,
     )
 
     if target_nodes is not None:
@@ -100,7 +116,8 @@ def plot_single_source(
 
     ax2.set_xlim(results["times"][0] * 0.9, results["times"][-1] * 1.1)
     ax2.set_ylim(
-        np.nanmin(results["peak_amplitudes"]) * 0.9, np.nanmax(results["peak_amplitudes"]) * 1.1,
+        np.nanmin(results["peak_amplitudes"]) * 0.9,
+        np.nanmax(results["peak_amplitudes"]) * 1.1,
     )
     ax1.set_xticks([])
 
@@ -144,10 +161,10 @@ def plot_local_dimensions(
             nodes = nx.draw_networkx_nodes(
                 graph,
                 pos=pos,
-                nodelist=[n,],
+                nodelist=[n],
                 node_size=node_size[n],
                 cmap=cmap,
-                node_color=[local_dimension[time_index, n],],
+                node_color=[local_dimension[time_index, n]],
                 vmin=vmin,
                 vmax=vmax,
             )
