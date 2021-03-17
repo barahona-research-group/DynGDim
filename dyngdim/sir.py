@@ -92,11 +92,15 @@ def get_beta_critical(G, mu=1):
     return beta_crit_eig, beta_crit_deg
 
 
-def scan_beta(G, betas, times, n_runs, local_dimensions, n_workers=1, plot_folder=None, mu=1):
+def scan_beta(
+    G, betas, times, n_runs, local_dimensions, n_workers=1, plot_folder=None, data_folder=None, mu=1
+):
     """Compute correlations with a beta scan.
 
     Returns the scan of correlationa and the chis values.
     """
+    Path(data_folder).mkdir(exist_ok=True, parents=True)
+    Path(plot_folder).mkdir(exist_ok=True, parents=True)
     corr_scan = []
     chis = []
     infects = []
@@ -108,6 +112,12 @@ def scan_beta(G, betas, times, n_runs, local_dimensions, n_workers=1, plot_folde
         chis.append(chi)
         infects.append(infect)
         corr_scan.append(corrs)
+
+        if data_folder:
+            pickle.dump(
+                [times, beta, mean_sir, std_sir, corrs, chi, infect],
+                open(f"data_folder/sir_{np.round(beta, 4)}.pkl", "wb"),
+            )
         if plot_folder:
             plt.figure()
             plt.errorbar(
@@ -149,6 +159,7 @@ def analyse_graph(G, times=None, betas=None, n_runs=100, n_workers=4, folder="ou
         local_dimensions,
         n_workers=n_workers,
         plot_folder=f"{folder}/figures",
+        data_folder=f"{folder}/data",
         mu=mu,
     )
     beta_crit_eig, beta_crit_deg = get_beta_critical(G)
