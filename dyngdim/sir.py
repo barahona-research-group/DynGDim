@@ -13,8 +13,16 @@ from tqdm import tqdm
 
 from dyngdim.dyngdim import run_local_dimension
 
+import EoN
+
 
 def single_run(G, beta, node, mu=1):
+    """Run SIR using EoN"""
+    t, S, I, R = EoN.fast_SIR(G, beta, mu, initial_infecteds=node)
+    return (R[-1] - 1) / (len(G) - 1)
+
+
+def single_run_epyc(G, beta, node, mu=1):
     """Run SIR model with single infected node and return fraction of removed nodes."""
     Model = SIR()
     E = StochasticDynamics(Model, G)
@@ -34,14 +42,16 @@ def several_runs(node, n_runs, G, beta, mu=1):
     return [single_run(G, beta, node, mu=mu) for _ in range(n_runs)]
 
 
-def run(n_runs, G, beta, n_workers=1, mu=1):
+def run(n_runs, G, beta, n_workers=1, mu=1, nodes=None):
     """Run several SIR simulations, and returns mean, percentiles and chi values."""
+    if nodes is None:
+        nodes = G
     res_all, mean, perc_l, perc_u = [], [], [], []
     with Pool(processes=n_workers) as p:
         for res in list(
             tqdm(
-                p.imap(partial(several_runs, n_runs=n_runs, G=G, beta=beta, mu=mu), G.nodes),
-                total=len(G.nodes),
+                p.imap(partial(several_runs, n_runs=n_runs, G=G, beta=beta, mu=mu), nodes),
+                total=len(nodes),
             )
         ):
             res_all += res
@@ -57,13 +67,13 @@ def run(n_runs, G, beta, n_workers=1, mu=1):
     return mean, percs, chi, infect
 
 
-def compute_corr(n_runs, G, beta, local_dimensions, n_workers=1, mu=1):
+def compute_corr(n_runs, G, beta, local_dimensions, n_workers=1, mu=1, nodes=None):
     """Compute the correlation between local dimension and SIR dynamnics.
 
     Returns mean sir values, percentiles, correlations witth local dimension and chi values.
     """
     corrs = []
-    mean_sir, perc_sir, chi, infect = run(n_runs, G, beta, n_workers=n_workers, mu=mu)
+    mean_sir, perc_sir, chi, infect = run(n_runs, G, beta, n_workers=n_workers, mu=mu, nodes=nodes)
     for dim in local_dimensions:
         dim[np.isnan(dim)] = 0
         corrs.append(pearsonr(mean_sir, dim)[0])
@@ -93,7 +103,16 @@ def get_beta_critical(G, mu=1):
 
 
 def scan_beta(
-    G, betas, times, n_runs, local_dimensions, n_workers=1, plot_folder=None, data_folder=None, mu=1
+    G,
+    betas,
+    times,
+    n_runs,
+    local_dimensions,
+    n_workers=1,
+    plot_folder=None,
+    data_folder=None,
+    mu=1,
+    nodes=None,
 ):
     """Compute correlations with a beta scan.
 
@@ -107,7 +126,13 @@ def scan_beta(
     for beta in betas:
         print("computing beta = ", beta)
         mean_sir, std_sir, corrs, chi, infect = compute_corr(
-            n_runs, G, beta, local_dimensions, n_workers=n_workers, mu=mu
+            n_runs,
+            G,
+            beta,
+            local_dimensions,
+            n_workers=n_workers,
+            mu=mu,
+            nodes=nodes,
         )
         chis.append(chi)
         infects.append(infect)
@@ -116,7 +141,7 @@ def scan_beta(
         if data_folder:
             pickle.dump(
                 [times, beta, mean_sir, std_sir, corrs, chi, infect],
-                open(f"data_folder/sir_{np.round(beta, 4)}.pkl", "wb"),
+                open(f"{data_folder}/sir_{np.round(beta, 4)}.pkl", "wb"),
             )
         if plot_folder:
             plt.figure()
@@ -137,7 +162,9 @@ def scan_beta(
     return corr_scan, chis, infects
 
 
-def analyse_graph(G, times=None, betas=None, n_runs=100, n_workers=4, folder="output", mu=1):
+def analyse_graph(
+    G, times=None, betas=None, n_runs=100, n_workers=4, folder="output", mu=1, nodes=None
+):
     """Run SIR comparision with local dimension."""
     if times is None:
         times = np.logspace(-3.5, 1.2, 1000)
@@ -150,7 +177,7 @@ def analyse_graph(G, times=None, betas=None, n_runs=100, n_workers=4, folder="ou
     if not (Path(folder) / "figures").exists():
         (Path(folder) / "figures").mkdir()
 
-    local_dimensions = run_local_dimension(G, times, n_workers=n_workers)
+    local_dimensions = run_local_dimension(G, times, n_workers=n_workers, nodes=nodes)
     corr_scan, chis, infects = scan_beta(
         G,
         betas,
@@ -161,6 +188,7 @@ def analyse_graph(G, times=None, betas=None, n_runs=100, n_workers=4, folder="ou
         plot_folder=f"{folder}/figures",
         data_folder=f"{folder}/data",
         mu=mu,
+        nodes=nodes,
     )
     beta_crit_eig, beta_crit_deg = get_beta_critical(G)
     pickle.dump(
@@ -179,7 +207,7 @@ def plot_analysis(folder, vmin=0.7, with_beta_crit=False, with_chi=False):
     for row in corr_scan:
         best.append(times[np.argmax(row)])
 
-    plt.figure(figsize=(6, 4))
+    plt.figure(figsize=(5, 2))
     plt.pcolormesh(
         times[::5], betas, np.array(corr_scan)[:, ::5], cmap="YlOrBr", shading="nearest", vmin=vmin
     )
@@ -203,4 +231,4 @@ def plot_analysis(folder, vmin=0.7, with_beta_crit=False, with_chi=False):
     plt.plot(infects, betas, c="k")
     plt.xlabel("infectability")
     # plt.twiny()
-    plt.savefig(f"{folder}/corr_scan.pdf")
+    plt.savefig(f"{folder}/corr_scan.pdf", bbox_inches='tight')
