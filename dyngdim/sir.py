@@ -8,7 +8,6 @@ import EoN
 import networkx as nx
 import numpy as np
 import pylab as plt
-from epydemic import SIR, StochasticDynamics
 from scipy.stats import pearsonr
 from tqdm import tqdm
 
@@ -19,21 +18,6 @@ def single_run(G, beta, node, mu=1):
     """Run SIR using EoN"""
     R = EoN.fast_SIR(G, beta, mu, initial_infecteds=node)[-1]
     return (R[-1] - 1) / (len(G) - 1)
-
-
-def single_run_epyc(G, beta, node, mu=1):
-    """Run SIR model with single infected node and return fraction of removed nodes."""
-    Model = SIR()
-    E = StochasticDynamics(Model, G)
-
-    param = dict()
-    param[SIR.P_REMOVE] = mu
-    param[SIR.P_INFECT] = beta
-    param[SIR.P_INFECTED] = 0.0
-    E.setUp(param)
-
-    Model.changeCompartment(node, Model.INFECTED)
-    return 1.0 * (E.do({})["epydemic.SIR.R"] - 1) / (len(G) - 1)
 
 
 def several_runs(node, n_runs, G, beta, mu=1):
