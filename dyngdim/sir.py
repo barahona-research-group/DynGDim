@@ -4,6 +4,7 @@ from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
 
+import EoN
 import networkx as nx
 import numpy as np
 import pylab as plt
@@ -12,8 +13,6 @@ from scipy.stats import pearsonr
 from tqdm import tqdm
 
 from dyngdim.dyngdim import run_local_dimension
-
-import EoN
 
 
 def single_run(G, beta, node, mu=1):
@@ -231,4 +230,4 @@ def plot_analysis(folder, vmin=0.7, with_beta_crit=False, with_chi=False):
     plt.plot(infects, betas, c="k")
     plt.xlabel("infectability")
     # plt.twiny()
-    plt.savefig(f"{folder}/corr_scan.pdf", bbox_inches='tight')
+    plt.savefig(f"{folder}/corr_scan.pdf", bbox_inches="tight")
