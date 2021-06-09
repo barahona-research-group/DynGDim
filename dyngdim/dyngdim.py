@@ -1,11 +1,11 @@
 """main functions"""
 import multiprocessing
-from tqdm import tqdm
 import warnings
 
 import networkx as nx
 import numpy as np
 import scipy as sc
+from tqdm import tqdm
 
 PRECISION = 1e-8
 
@@ -30,7 +30,7 @@ class Worker:
 
 def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
     """compute relative dimensions of all the nodes in a graph"""
-    sources = [initial_measure(graph, [node]) for node in graph]
+    sources = [get_initial_measure(graph, [node]) for node in graph]
     return run_several_sources(
         graph, times, sources, use_spectral_gap=use_spectral_gap, n_workers=n_workers
     )
@@ -76,9 +76,11 @@ def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
     return results
 
 
-def run_local_dimension(graph, times, use_spectral_gap=True, n_workers=1):
+def run_local_dimension(graph, times, use_spectral_gap=True, n_workers=1, nodes=None):
     """computing the local dimensionality of each node"""
-    sources = [initial_measure(graph, [node]) for node in graph]
+    if nodes is None:
+        nodes = graph
+    sources = [get_initial_measure(graph, [node]) for node in nodes]
     return run_local_dimension_from_sources(
         graph, times, sources, use_spectral_gap=use_spectral_gap, n_workers=n_workers
     )
@@ -189,9 +191,9 @@ def extract_relative_dimensions(times, node_trajectories, initial_measure, spect
     return relative_dimensions, peak_times, peak_amplitudes, diffusion_coefficient
 
 
-def initial_measure(graph, nodes):
+def get_initial_measure(graph, nodes):
     """create an measure with the correct mass from a list of nodes"""
-    total_degree = sum([graph.degree(u, weight="weight") for u in graph])
+    total_degree = sum(graph.degree(u, weight="weight") for u in graph)
     measure = np.zeros(len(graph))
     measure[nodes] = [
         total_degree / (len(graph) * graph.degree(node, weight="weight")) / len(nodes)
