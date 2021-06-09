@@ -17,7 +17,7 @@ from dyngdim.dyngdim import run_local_dimension
 
 def single_run(G, beta, node, mu=1):
     """Run SIR using EoN"""
-    t, S, I, R = EoN.fast_SIR(G, beta, mu, initial_infecteds=node)
+    R = EoN.fast_SIR(G, beta, mu, initial_infecteds=node)[-1]
     return (R[-1] - 1) / (len(G) - 1)
 
 
