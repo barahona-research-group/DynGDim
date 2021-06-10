@@ -9,7 +9,7 @@ Dimension is a fundamental property of objects and the space in which they are e
 The code in this repository implements the Relative Dimension algorithm and contains a small pipeline to run examples on classic graphs. 
 
 <p align="center">
-  <img src="doc/figure_schematic.png" width="800" />
+  <img src="doc/figure_schematic.pdf" width="800" />
 </p>
 
 
