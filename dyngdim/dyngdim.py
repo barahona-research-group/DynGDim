@@ -28,20 +28,35 @@ class Worker:
         )[:2]
 
 
-def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1):
+def run_all_sources(graph, times, use_spectral_gap=True, n_workers=1, disable_tqdm=False):
     """compute relative dimensions of all the nodes in a graph"""
     sources = [get_initial_measure(graph, [node]) for node in graph]
     return run_several_sources(
-        graph, times, sources, use_spectral_gap=use_spectral_gap, n_workers=n_workers
+        graph,
+        times,
+        sources,
+        use_spectral_gap=use_spectral_gap,
+        n_workers=n_workers,
+        disable_tqdm=disable_tqdm,
     )
 
 
-def run_several_sources(graph, times, sources, use_spectral_gap=True, n_workers=1):
+def run_several_sources(
+    graph, times, sources, use_spectral_gap=True, n_workers=1, disable_tqdm=False
+):
     """relative dimensions from a list of sources"""
     laplacian, spectral_gap = construct_laplacian(graph, use_spectral_gap=use_spectral_gap)
     worker = Worker(graph, laplacian, times, spectral_gap)
     with multiprocessing.Pool(n_workers) as pool:
-        out = np.array(list(tqdm(pool.imap(worker, sources), total=len(sources))))
+        out = np.array(
+            list(
+                tqdm(
+                    pool.imap(worker, sources, chunksize=max(1, int(len(sources) / n_workers))),
+                    total=len(sources),
+                    disable=disable_tqdm,
+                )
+            )
+        )
 
     relative_dimensions = out[:, 0]
     peak_times = out[:, 1]
@@ -76,20 +91,34 @@ def run_single_source(graph, times, initial_measure, use_spectral_gap=True):
     return results
 
 
-def run_local_dimension(graph, times, use_spectral_gap=True, n_workers=1, nodes=None):
+def run_local_dimension(
+    graph, times, use_spectral_gap=True, n_workers=1, nodes=None, disable_tqdm=False
+):
     """computing the local dimensionality of each node"""
     if nodes is None:
         nodes = graph
     sources = [get_initial_measure(graph, [node]) for node in nodes]
     return run_local_dimension_from_sources(
-        graph, times, sources, use_spectral_gap=use_spectral_gap, n_workers=n_workers
+        graph,
+        times,
+        sources,
+        use_spectral_gap=use_spectral_gap,
+        n_workers=n_workers,
+        disable_tqdm=disable_tqdm,
     )
 
 
-def run_local_dimension_from_sources(graph, times, sources, use_spectral_gap=True, n_workers=1):
+def run_local_dimension_from_sources(
+    graph, times, sources, use_spectral_gap=True, n_workers=1, disable_tqdm=False
+):
     """computing the local dimensionality of each source"""
     relative_dimensions, peak_times = run_several_sources(
-        graph, times, sources, use_spectral_gap, n_workers
+        graph,
+        times,
+        sources,
+        use_spectral_gap,
+        n_workers,
+        disable_tqdm=disable_tqdm,
     )
 
     local_dimensions = []
